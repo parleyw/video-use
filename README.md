@@ -31,9 +31,16 @@ pip install -e .
 brew install ffmpeg           # required
 brew install yt-dlp            # optional, for downloading online sources
 
-# 3. Add your ElevenLabs API key
+# 3. Choose your transcription backend (all fully open source)
+#    Faster-Whisper: fastest local option, ~4x faster than Whisper, free
+pip install faster-whisper
+#    OR Whisper: local, open source, free, but slower
+# pip install openai-whisper
+#    OR ElevenLabs: cloud, fastest, but requires API key ($5-99/month)
+# cp .env.example .env && $EDITOR .env
+
 cp .env.example .env
-$EDITOR .env                   # ELEVENLABS_API_KEY=...
+$EDITOR .env                   # Set TRANSCRIBER_BACKEND, optional ELEVENLABS_API_KEY
 ```
 
 Then point Claude Code at a folder of raw takes:
@@ -49,6 +56,27 @@ And in the session:
 
 It inventories the sources, proposes a strategy, waits for your OK, then produces `edit/final.mp4` next to your sources. All outputs live in `<videos_dir>/edit/` — the skill directory stays clean.
 
+### Transcription Options
+
+**Faster-Whisper (recommended)** — Local, ~4x faster than Whisper, free
+```bash
+pip install faster-whisper
+export TRANSCRIBER_BACKEND=faster-whisper
+```
+
+**Whisper** — Local, open source, free
+```bash
+pip install openai-whisper
+export TRANSCRIBER_BACKEND=whisper
+```
+
+**ElevenLabs** — Cloud, fastest, with built-in speaker diarization ($5-99/month)
+```bash
+export TRANSCRIBER_BACKEND=elevenlabs ELEVENLABS_API_KEY=your_key_here
+```
+
+For detailed comparison and setup, see [`helpers/transcribers/README.md`](./helpers/transcribers/README.md).
+
 ## How it works
 
 The LLM never watches the video. It **reads** it — through two layers that together give it everything it needs to cut with word-boundary precision.
@@ -57,7 +85,7 @@ The LLM never watches the video. It **reads** it — through two layers that tog
   <img src="static/timeline-view.svg" alt="timeline_view composite — filmstrip + speaker track + waveform + word labels + silence-gap cut candidates" width="100%">
 </p>
 
-**Layer 1 — Audio transcript (always loaded).** One ElevenLabs Scribe call per source gives word-level timestamps, speaker diarization, and audio events (`(laughter)`, `(applause)`, `(sigh)`). All takes pack into a single ~12KB `takes_packed.md` — the LLM's primary reading view.
+**Layer 1 — Audio transcript (always loaded).** Transcribe with your choice of backend (Whisper, Faster-Whisper, or ElevenLabs) to get word-level timestamps and audio events (`(laughter)`, `(applause)`, `(sigh)`). All takes pack into a single ~12KB `takes_packed.md` — the LLM's primary reading view. (ElevenLabs adds speaker diarization; local backends can be extended with it.)
 
 ```
 ## C0103  (duration: 43.0s, 8 phrases)

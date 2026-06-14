@@ -13,6 +13,20 @@ dependencies = [
 
 [project.optional-dependencies]
 animations = ["manim"]
+transcribers-elevenlabs = ["requests"]
+transcribers-whisper = ["openai-whisper"]
+transcribers-faster = ["faster-whisper"]
+transcribers-diarization = ["openai-whisper", "faster-whisper", "pyannote.audio"]
+transcribers-google = ["google-cloud-speech"]
+transcribers-assemblyai = ["assemblyai"]
+transcribers-all = [
+    "openai-whisper",
+    "faster-whisper",
+    "pyannote.audio",
+    "google-cloud-speech",
+    "assemblyai",
+    "requests",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]

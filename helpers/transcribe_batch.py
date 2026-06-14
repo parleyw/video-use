@@ -1,15 +1,20 @@
 """Batch-transcribe every video in a directory with 4 parallel workers.
 
-Walks <videos_dir> for common video extensions, runs ElevenLabs Scribe on
-each, writes transcripts to <videos_dir>/edit/transcripts/<name>.json.
+Walks <videos_dir> for common video extensions, transcribes each with the
+configured backend (Whisper, Faster-Whisper, or ElevenLabs), writes transcripts
+to <videos_dir>/edit/transcripts/<name>.json.
 
 Cached per-file: any source that already has a transcript is skipped.
+
+Set TRANSCRIBER_BACKEND env var to choose backend: 'whisper' (default),
+'faster-whisper', or 'elevenlabs'.
 
 Usage:
     python helpers/transcribe_batch.py <videos_dir>
     python helpers/transcribe_batch.py <videos_dir> --workers 4
     python helpers/transcribe_batch.py <videos_dir> --num-speakers 2
     python helpers/transcribe_batch.py <videos_dir> --edit-dir /custom/edit
+    TRANSCRIBER_BACKEND=faster-whisper python helpers/transcribe_batch.py <videos_dir>
 """
 
 from __future__ import annotations
@@ -20,7 +25,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from transcribe import load_api_key, transcribe_one
+from transcribe import transcribe_one
 
 
 VIDEO_EXTS = {".mp4", ".MP4", ".mov", ".MOV", ".mkv", ".MKV", ".avi", ".AVI", ".m4v"}
@@ -35,7 +40,10 @@ def find_videos(videos_dir: Path) -> list[Path]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Parallel batch transcription of a videos directory")
+    ap = argparse.ArgumentParser(
+        description="Parallel batch transcription of a videos directory",
+        epilog="Set TRANSCRIBER_BACKEND env var to choose backend: 'whisper' (default), 'elevenlabs', 'faster-whisper'",
+    )
     ap.add_argument("videos_dir", type=Path, help="Directory containing source videos")
     ap.add_argument(
         "--edit-dir",
@@ -55,6 +63,13 @@ def main() -> None:
         type=int,
         default=None,
         help="Optional number of speakers. Improves diarization when known.",
+    )
+    ap.add_argument(
+        "--backend",
+        type=str,
+        default=None,
+        help="Transcription backend: 'whisper', 'elevenlabs', or 'faster-whisper'. "
+             "Default: read from TRANSCRIBER_BACKEND env var or 'whisper'.",
     )
     args = ap.parse_args()
 
@@ -77,8 +92,6 @@ def main() -> None:
         print("nothing to do")
         return
 
-    api_key = load_api_key()
-
     print(f"transcribing {len(pending)} files with {args.workers} parallel workers")
     t0 = time.time()
 
@@ -89,9 +102,9 @@ def main() -> None:
                 transcribe_one,
                 video=v,
                 edit_dir=edit_dir,
-                api_key=api_key,
                 language=args.language,
                 num_speakers=args.num_speakers,
+                backend_name=args.backend,
                 verbose=False,
             ): v
             for v in pending

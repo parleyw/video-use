@@ -57,16 +57,31 @@ The skill lives in `video-use/`. User footage lives wherever they put it. All se
 
 ## Setup
 
-- `ELEVENLABS_API_KEY` in `.env` at project root or env. Ask and write `.env` if missing.
-- `ffmpeg` + `ffprobe` on PATH.
-- Python deps: `pip install -e .`.
-- `yt-dlp`, `manim`, Remotion installed only on first use.
-- This skill vendors `skills/manim-video/`. Read its SKILL.md when building a Manim slot.
+**Choose your transcription backend** (all fully open source):
+- **Faster-Whisper (recommended):** Local, ~4x faster than Whisper, free
+  - Install: `pip install faster-whisper`
+  - Set: `TRANSCRIBER_BACKEND=faster-whisper`
+- **Whisper:** Local, open source, free, ~1-2 min per hour
+  - Install: `pip install openai-whisper`
+  - Set: `TRANSCRIBER_BACKEND=whisper`
+- **ElevenLabs:** Cloud, fastest (~5-30 sec), built-in speaker diarization, $5-99/month
+  - Install: `pip install requests`
+  - Set: `TRANSCRIBER_BACKEND=elevenlabs` + `ELEVENLABS_API_KEY=...`
+
+See `helpers/transcribers/README.md` for detailed comparison and setup.
+
+**Other requirements:**
+- `ffmpeg` + `ffprobe` on PATH
+- Python deps: `pip install -e .` (includes all transcriber base deps)
+- `yt-dlp`, `manim`, Remotion installed only on first use
+- This skill vendors `skills/manim-video/`. Read its SKILL.md when building a Manim slot
 
 ## Helpers
 
-- **`transcribe.py <video>`** — single-file Scribe call. `--num-speakers N` optional. Cached.
-- **`transcribe_batch.py <videos_dir>`** — 4-worker parallel transcription. Use for multi-take.
+- **`transcribe.py <video>`** — single-file transcription (any backend: Whisper, Faster-Whisper, ElevenLabs). `--num-speakers N` optional. `--backend <name>` to override. Cached.
+  - Supports pluggable backends: set `TRANSCRIBER_BACKEND` env var or use `--backend` arg
+  - See `helpers/transcribers/README.md` for backend comparison and configuration
+- **`transcribe_batch.py <videos_dir>`** — 4-worker parallel transcription (uses same backend system). Use for multi-take.
 - **`pack_transcripts.py --edit-dir <dir>`** — `transcripts/*.json` → `takes_packed.md` (phrase-level, break on silence ≥ 0.5s).
 - **`timeline_view.py <video> <start> <end>`** — filmstrip + waveform PNG. On-demand visual drill-down. **Not a scan tool** — use it at decision points, not constantly.
 - **`render.py <edl.json> -o <out>`** — per-segment extract → concat → overlays (PTS-shifted) → subtitles LAST. `--preview` for 720p fast. `--build-subtitles` to generate master.srt inline.
